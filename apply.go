@@ -8,11 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/inconshreveable/go-update/internal/osext"
+	"github.com/godoes/go-update/internal/osext"
 )
 
 var (
@@ -41,8 +40,8 @@ var (
 // 8. If the final rename fails, attempts to roll back by renaming /path/to/.target.old
 // back to /path/to/target.
 //
-// If the roll back operation fails, the file system is left in an inconsistent state (betweet steps 5 and 6) where
-// there is no new executable file and the old executable file could not be be moved to its original location. In this
+// If the rollback operation fails, the file system is left in an inconsistent state (between steps 5 and 6) where
+// there is no new executable file and the old executable file could not be moved to its original location. In this
 // case you should notify the user of the bad news and ask them to recover manually. Applications can determine whether
 // the rollback failed by calling RollbackError, see the documentation on that function for additional detail.
 func Apply(update io.Reader, opts Options) error {
@@ -55,7 +54,7 @@ func Apply(update io.Reader, opts Options) error {
 	case opts.Signature != nil:
 		return errors.New("no public key to verify signature with")
 	case opts.PublicKey != nil:
-		return errors.New("No signature to verify with")
+		return errors.New("no signature to verify with")
 	}
 
 	// set defaults
@@ -83,7 +82,7 @@ func Apply(update io.Reader, opts Options) error {
 		}
 	} else {
 		// no patch to apply, go on through
-		if newBytes, err = ioutil.ReadAll(update); err != nil {
+		if newBytes, err = io.ReadAll(update); err != nil {
 			return err
 		}
 	}
@@ -105,13 +104,15 @@ func Apply(update io.Reader, opts Options) error {
 	updateDir := filepath.Dir(opts.TargetPath)
 	filename := filepath.Base(opts.TargetPath)
 
-	// Copy the contents of newbinary to a new executable file
+	// Copy the contents of new binary to a new executable file
 	newPath := filepath.Join(updateDir, fmt.Sprintf(".%s.new", filename))
 	fp, err := openFile(newPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, opts.TargetMode)
 	if err != nil {
 		return err
 	}
-	defer fp.Close()
+	defer func(fp *os.File) {
+		_ = fp.Close()
+	}(fp)
 
 	_, err = io.Copy(fp, bytes.NewReader(newBytes))
 	if err != nil {
@@ -120,7 +121,7 @@ func Apply(update io.Reader, opts Options) error {
 
 	// if we don't call fp.Close(), windows won't let us move the new executable
 	// because the file will still be "in use"
-	fp.Close()
+	_ = fp.Close()
 
 	// this is where we'll move the executable to so that we can swap in the updated replacement
 	oldPath := opts.OldSavePath
@@ -140,7 +141,7 @@ func Apply(update io.Reader, opts Options) error {
 		return err
 	}
 
-	// move the new exectuable in to become the new program
+	// move the new executable in to become the new program
 	err = os.Rename(newPath, opts.TargetPath)
 
 	if err != nil {
@@ -151,9 +152,9 @@ func Apply(update io.Reader, opts Options) error {
 		// binary to take its place. That means there is no file where the current executable binary
 		// used to be!
 		// Try to rollback by restoring the old binary to its original path.
-		rerr := os.Rename(oldPath, opts.TargetPath)
-		if rerr != nil {
-			return &rollbackErr{err, rerr}
+		e := os.Rename(oldPath, opts.TargetPath)
+		if e != nil {
+			return &rollbackErr{err, e}
 		}
 
 		return err
@@ -178,12 +179,14 @@ func Apply(update io.Reader, opts Options) error {
 //
 // If no rollback was needed or if the rollback was successful, RollbackError returns nil,
 // otherwise it returns the error encountered when trying to roll back.
+//
+//goland:noinspection GoUnusedExportedFunction
 func RollbackError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if rerr, ok := err.(*rollbackErr); ok {
-		return rerr.rollbackErr
+	if e, ok := err.(*rollbackErr); ok {
+		return e.rollbackErr
 	}
 	return nil
 }
@@ -195,7 +198,7 @@ type rollbackErr struct {
 
 type Options struct {
 	// TargetPath defines the path to the file to update.
-	// The emptry string means 'the executable file of the running program'.
+	// The empty string means 'the executable file of the running program'.
 	TargetPath string
 
 	// Create TargetPath replacement with this file mode. If zero, defaults to 0755.
@@ -244,7 +247,7 @@ func (o *Options) CheckPermissions() error {
 	if err != nil {
 		return err
 	}
-	fp.Close()
+	_ = fp.Close()
 
 	_ = os.Remove(newPath)
 	return nil
@@ -253,8 +256,8 @@ func (o *Options) CheckPermissions() error {
 // SetPublicKeyPEM is a convenience method to set the PublicKey property
 // used for checking a completed update's signature by parsing a
 // Public Key formatted as PEM data.
-func (o *Options) SetPublicKeyPEM(pembytes []byte) error {
-	block, _ := pem.Decode(pembytes)
+func (o *Options) SetPublicKeyPEM(pemBytes []byte) error {
+	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return errors.New("couldn't parse PEM data")
 	}
@@ -281,7 +284,9 @@ func (o *Options) applyPatch(patch io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer old.Close()
+	defer func(old *os.File) {
+		_ = old.Close()
+	}(old)
 
 	// apply the patch
 	var applied bytes.Buffer
@@ -299,7 +304,7 @@ func (o *Options) verifyChecksum(updated []byte) error {
 	}
 
 	if !bytes.Equal(o.Checksum, checksum) {
-		return fmt.Errorf("Updated file has wrong checksum. Expected: %x, got: %x", o.Checksum, checksum)
+		return fmt.Errorf("updated file has wrong checksum. Expected: %x, got: %x", o.Checksum, checksum)
 	}
 	return nil
 }

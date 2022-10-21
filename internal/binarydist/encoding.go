@@ -6,13 +6,13 @@ package binarydist
 // have been written; the rest panic.
 type signMagLittleEndian struct{}
 
-func (signMagLittleEndian) Uint16(b []byte) uint16 { panic("unimplemented") }
+func (signMagLittleEndian) Uint16(_ []byte) uint16 { panic("unimplemented") }
 
-func (signMagLittleEndian) PutUint16(b []byte, v uint16) { panic("unimplemented") }
+func (signMagLittleEndian) PutUint16(_ []byte, _ uint16) { panic("unimplemented") }
 
-func (signMagLittleEndian) Uint32(b []byte) uint32 { panic("unimplemented") }
+func (signMagLittleEndian) Uint32(_ []byte) uint32 { panic("unimplemented") }
 
-func (signMagLittleEndian) PutUint32(b []byte, v uint32) { panic("unimplemented") }
+func (signMagLittleEndian) PutUint32(_ []byte, _ uint32) { panic("unimplemented") }
 
 func (signMagLittleEndian) Uint64(b []byte) uint64 {
 	y := int64(b[0]) |

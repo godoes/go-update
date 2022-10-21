@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build darwin || linux || freebsd || netbsd || windows
 // +build darwin linux freebsd netbsd windows
 
 package osext
@@ -80,7 +81,9 @@ func TestExecutableMatch(t *testing.T) {
 }
 
 func TestExecutableDelete(t *testing.T) {
-	if runtime.GOOS != "linux" {
+	switch runtime.GOOS {
+	case "linux":
+	default:
 		t.Skip()
 	}
 	fpath, err := Executable()
@@ -119,8 +122,8 @@ func TestExecutableDelete(t *testing.T) {
 		t.Fatalf("rename copy to previous name failed: %v", err)
 	}
 
-	w.Write([]byte{0})
-	w.Close()
+	_, _ = w.Write([]byte{0})
+	_ = w.Close()
 
 	err = cmd.Wait()
 	if err != nil {
@@ -152,13 +155,17 @@ func copyFile(dest, src string) error {
 	if err != nil {
 		return err
 	}
-	defer df.Close()
+	defer func(df *os.File) {
+		_ = df.Close()
+	}(df)
 
 	sf, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	defer sf.Close()
+	defer func(sf *os.File) {
+		_ = sf.Close()
+	}(sf)
 
 	_, err = io.Copy(df, sf)
 	return err
@@ -172,31 +179,32 @@ func TestMain(m *testing.M) {
 	case executableEnvValueMatch:
 		// First chdir to another path.
 		dir := "/"
-		if runtime.GOOS == "windows" {
+		switch runtime.GOOS {
+		case "windows":
 			dir = filepath.VolumeName(".")
 		}
-		os.Chdir(dir)
+		_ = os.Chdir(dir)
 		if ep, err := Executable(); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: ", err)
+			_, _ = fmt.Fprint(os.Stderr, "ERROR: ", err)
 		} else {
-			fmt.Fprint(os.Stderr, ep)
+			_, _ = fmt.Fprint(os.Stderr, ep)
 		}
 	case executableEnvValueDelete:
 		bb := make([]byte, 1)
 		var err error
 		n, err := os.Stdin.Read(bb)
 		if err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: ", err)
+			_, _ = fmt.Fprint(os.Stderr, "ERROR: ", err)
 			os.Exit(2)
 		}
 		if n != 1 {
-			fmt.Fprint(os.Stderr, "ERROR: n != 1, n == ", n)
+			_, _ = fmt.Fprint(os.Stderr, "ERROR: n != 1, n == ", n)
 			os.Exit(2)
 		}
 		if ep, err := Executable(); err != nil {
-			fmt.Fprint(os.Stderr, "ERROR: ", err)
+			_, _ = fmt.Fprint(os.Stderr, "ERROR: ", err)
 		} else {
-			fmt.Fprint(os.Stderr, ep)
+			_, _ = fmt.Fprint(os.Stderr, ep)
 		}
 	}
 	os.Exit(0)

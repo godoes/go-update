@@ -8,11 +8,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/inconshreveable/go-update/internal/binarydist"
+	"github.com/godoes/go-update/internal/binarydist"
 )
 
 var (
@@ -22,13 +21,13 @@ var (
 )
 
 func cleanup(path string) {
-	os.Remove(path)
-	os.Remove(fmt.Sprintf(".%s.new", path))
+	_ = os.Remove(path)
+	_ = os.Remove(fmt.Sprintf(".%s.new", path))
 }
 
 // we write with a separate name for each test so that we can run them in parallel
 func writeOldFile(path string, t *testing.T) {
-	if err := ioutil.WriteFile(path, oldFile, 0777); err != nil {
+	if err := os.WriteFile(path, oldFile, 0777); err != nil {
 		t.Fatalf("Failed to write file for testing preparation: %v", err)
 	}
 }
@@ -38,7 +37,7 @@ func validateUpdate(path string, err error, t *testing.T) {
 		t.Fatalf("Failed to update: %v", err)
 	}
 
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Failed to read file post-update: %v", err)
 	}
@@ -60,23 +59,23 @@ func TestApplySimple(t *testing.T) {
 }
 
 func TestApplyOldSavePath(t *testing.T) {
-	fName := "TestApplyOldSavePath"
-	defer cleanup(fName)
-	writeOldFile(fName, t)
+	fileName := "TestApplyOldSavePath"
+	defer cleanup(fileName)
+	writeOldFile(fileName, t)
 
-	oldfName := "OldSavePath"
+	oldFileName := "OldSavePath"
 
 	err := Apply(bytes.NewReader(newFile), Options{
-		TargetPath:  fName,
-		OldSavePath: oldfName,
+		TargetPath:  fileName,
+		OldSavePath: oldFileName,
 	})
-	validateUpdate(fName, err, t)
+	validateUpdate(fileName, err, t)
 
-	if _, err := os.Stat(oldfName); os.IsNotExist(err) {
+	if _, err := os.Stat(oldFileName); os.IsNotExist(err) {
 		t.Fatalf("Failed to find the old file: %v", err)
 	}
 
-	cleanup(oldfName)
+	cleanup(oldFileName)
 }
 
 func TestVerifyChecksum(t *testing.T) {
@@ -385,7 +384,7 @@ func TestWriteError(t *testing.T) {
 		f, err := os.OpenFile(name, flags, perm)
 
 		// simulate Write() error by closing the file prematurely
-		f.Close()
+		_ = f.Close()
 
 		return f, err
 	}

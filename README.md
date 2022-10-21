@@ -1,4 +1,4 @@
-# go-update: Build self-updating Go programs [![godoc reference](https://godoc.org/github.com/inconshreveable/go-update?status.png)](https://godoc.org/github.com/inconshreveable/go-update)
+# go-update: Build self-updating Go programs [![godoc reference](https://godoc.org/github.com/godoes/go-update?status.png)](https://godoc.org/github.com/godoes/go-update)
 
 Package update provides functionality to implement secure, self-updating Go programs (or other single-file targets)
 A program can update itself by replacing its executable file with a new version.
@@ -10,36 +10,43 @@ advanced features like binary patching and code signing verification.
 Example of updating from a URL:
 
 ```go
-import (
-    "fmt"
-    "net/http"
+package upgrade
 
-    "github.com/inconshreveable/go-update"
+import (
+	"io"
+	"net/http"
+
+	"github.com/godoes/go-update"
 )
 
+//goland:noinspection GoUnusedFunction
 func doUpdate(url string) error {
-    resp, err := http.Get(url)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-    err := update.Apply(resp.Body, update.Options{})
-    if err != nil {
-        // error handling
-    }
-    return err
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
+
+	err = update.Apply(resp.Body, *new(update.Options))
+	if err != nil {
+		// error handling
+	}
+	return err
 }
 ```
 
 ## Features
 
-- Cross platform support (Windows too!)
+- Cross-platform support (Windows too!)
 - Binary patch application
 - Checksum verification
 - Code signing verification
 - Support for updating arbitrary files
 
 ## [equinox.io](https://equinox.io)
+
 [equinox.io](https://equinox.io) is a complete ready-to-go updating solution built on top of go-update that provides:
 
 - Hosted updates
@@ -50,12 +57,13 @@ func doUpdate(url string) error {
 - Update/download metrics
 
 ## API Compatibility Promises
+
 The master branch of `go-update` is *not* guaranteed to have a stable API over time. For any production application, you should vendor
 your dependency on `go-update` with a tool like git submodules, [gb](http://getgb.io/) or [govendor](https://github.com/kardianos/govendor).
 
 The `go-update` package makes the following promises about API compatibility:
 1. A list of all API-breaking changes will be documented in this README.
-1. `go-update` will strive for as few API-breaking changes as possible.
+2. `go-update` will strive for as few API-breaking changes as possible.
 
 ## API Breaking Changes
 - **Sept 3, 2015**: The `Options` struct passed to `Apply` was changed to be passed by value instead of passed by pointer. Old API at `28de026`.

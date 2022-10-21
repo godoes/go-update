@@ -2,7 +2,6 @@ package binarydist
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -24,13 +23,13 @@ var diffT = []struct {
 
 func TestDiff(t *testing.T) {
 	for _, s := range diffT {
-		got, err := ioutil.TempFile("/tmp", "bspatch.")
+		got, err := os.CreateTemp("/tmp", "bspatch.")
 		if err != nil {
 			panic(err)
 		}
-		os.Remove(got.Name())
+		_ = os.Remove(got.Name())
 
-		exp, err := ioutil.TempFile("/tmp", "bspatch.")
+		exp, err := os.CreateTemp("/tmp", "bspatch.")
 		if err != nil {
 			panic(err)
 		}
@@ -38,7 +37,7 @@ func TestDiff(t *testing.T) {
 		cmd := exec.Command("bsdiff", s.old.Name(), s.new.Name(), exp.Name())
 		cmd.Stdout = os.Stdout
 		err = cmd.Run()
-		os.Remove(exp.Name())
+		_ = os.Remove(exp.Name())
 		if err != nil {
 			panic(err)
 		}

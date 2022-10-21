@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
-	"io/ioutil"
 )
 
 func swap(a []int, i, j int) { a[i], a[j] = a[j], a[i] }
@@ -175,18 +174,17 @@ func search(I []int, obuf, nbuf []byte, st, en int) (pos, n int) {
 	} else {
 		return search(I, obuf, nbuf, st, x)
 	}
-	panic("unreached")
 }
 
 // Diff computes the difference between old and new, according to the bsdiff
 // algorithm, and writes the result to patch.
 func Diff(old, new io.Reader, patch io.Writer) error {
-	obuf, err := ioutil.ReadAll(old)
+	obuf, err := io.ReadAll(old)
 	if err != nil {
 		return err
 	}
 
-	nbuf, err := ioutil.ReadAll(new)
+	nbuf, err := io.ReadAll(new)
 	if err != nil {
 		return err
 	}
@@ -315,21 +313,21 @@ func diff(obuf, nbuf []byte, patch io.WriteSeeker) error {
 
 			err = binary.Write(pfbz2, signMagLittleEndian{}, int64(lenf))
 			if err != nil {
-				pfbz2.Close()
+				_ = pfbz2.Close()
 				return err
 			}
 
 			val := (scan - lenb) - (lastscan + lenf)
 			err = binary.Write(pfbz2, signMagLittleEndian{}, int64(val))
 			if err != nil {
-				pfbz2.Close()
+				_ = pfbz2.Close()
 				return err
 			}
 
 			val = (pos - lenb) - (lastpos + lenf)
 			err = binary.Write(pfbz2, signMagLittleEndian{}, int64(val))
 			if err != nil {
-				pfbz2.Close()
+				_ = pfbz2.Close()
 				return err
 			}
 
@@ -348,7 +346,7 @@ func diff(obuf, nbuf []byte, patch io.WriteSeeker) error {
 	if err != nil {
 		return err
 	}
-	hdr.CtrlLen = int64(l64 - 32)
+	hdr.CtrlLen = l64 - 32
 
 	// Write compressed diff data
 	pfbz2, err = newBzip2Writer(patch)
@@ -357,11 +355,11 @@ func diff(obuf, nbuf []byte, patch io.WriteSeeker) error {
 	}
 	n, err := pfbz2.Write(db[:dblen])
 	if err != nil {
-		pfbz2.Close()
+		_ = pfbz2.Close()
 		return err
 	}
 	if n != dblen {
-		pfbz2.Close()
+		_ = pfbz2.Close()
 		return io.ErrShortWrite
 	}
 	err = pfbz2.Close()
@@ -383,11 +381,11 @@ func diff(obuf, nbuf []byte, patch io.WriteSeeker) error {
 	}
 	n, err = pfbz2.Write(eb[:eblen])
 	if err != nil {
-		pfbz2.Close()
+		_ = pfbz2.Close()
 		return err
 	}
 	if n != eblen {
-		pfbz2.Close()
+		_ = pfbz2.Close()
 		return io.ErrShortWrite
 	}
 	err = pfbz2.Close()
